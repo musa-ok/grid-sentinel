@@ -22,23 +22,18 @@ async def update_modbus_data(context):
         if message is not None:
             data = json.loads(message['data'])
 
-            # --- MODBUS HARİTALAMA (REGISTER MAPPING) ---
-            # Holding Registers (Fonksiyon Kodu 3)
-            register_id = 3  # pymodbus default
+
+            register_id = 3
             slave_id = 0x00
 
-            # 1. MPR-53CS Analizör Adresleri (L1 Akım - Hex 0006)
+
             akim_degeri = int(data.get('akim_a', 0))
             context[slave_id].setValues(register_id, 6, [akim_degeri])
 
-            # 2. TVOC-2 Ark Sensörü Adresleri (System State - Hex 0514 / Dec 1300)
             ark_durumu = 1 if data.get('ark_durumu', 0) == 1 else 0
             context[slave_id].setValues(register_id, 1300, [ark_durumu])
 
-            # 3. GridSentinel Özel Adresleri (SCADA Entegrasyonu İçin)
-            # 100: Ortam Sıcaklığı (°C * 10)
-            # 101: Kısmi Deşarj (pC)
-            # 102: Yapay Zeka Anomali Kararı (0: Normal, 1: Kritik Anomali)
+
             sicaklik_int = int(data.get('sicaklik_c', 0) * 10)
             pd_int = int(data.get('pd_seviyesi_pc', 0))
             ai_karari = 1 if data.get('is_synthetic_anomaly', False) else 0
@@ -49,7 +44,7 @@ async def update_modbus_data(context):
 
 
 async def run_modbus_server():
-    # 65536 adreslik boş bir veri bloğu oluştur (0 ile doldur)
+
     store = ModbusSlaveContext(
         di=ModbusSequentialDataBlock(0, [0] * 65536),
         co=ModbusSequentialDataBlock(0, [0] * 65536),
@@ -58,10 +53,8 @@ async def run_modbus_server():
     )
     context = ModbusServerContext(slaves=store, single=True)
 
-    # Arka planda verileri güncelleyen döngüyü başlat
     asyncio.create_task(update_modbus_data(context))
 
-    # SCADA sistemlerinin bağlanması için Modbus TCP sunucusunu 5020 portunda ayağa kaldır
     logger.info("🚀 GridSentinel Modbus TCP Sunucusu Başlatılıyor (Port: 5020)...")
     await StartAsyncTcpServer(context=context, address=("0.0.0.0", 5020))
 

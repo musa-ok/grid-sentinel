@@ -6,6 +6,10 @@ import json
 import joblib
 import pandas as pd
 import httpx
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 app = FastAPI(title="GridSentinel API")
 
@@ -19,9 +23,8 @@ app.add_middleware(
 
 connected_clients = []
 
-# KENDİ BİLGİLERİNİ BURAYA YAPIŞTIR
-TELEGRAM_BOT_TOKEN = "8379408302:AAFWaM_s1S6rnSSFEEfjyLNq8TGJDbfDI0U"
-TELEGRAM_CHAT_ID = "6051769523"
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 
 try:
     xgb_model = joblib.load("ai_research/models/xgb_anomaly_model.pkl")
@@ -37,7 +40,7 @@ async def send_telegram_alert(msg_text):
     payload = {"chat_id": TELEGRAM_CHAT_ID, "text": msg_text}
     print(f"📱 TELEGRAM MESAJI TETİKLENDİ:\n{msg_text}")
 
-    # Yorum satırları kalktı, sistem artık direkt internete çıkıp cebine mesaj atıyor!
+
     async with httpx.AsyncClient() as client:
         try:
             await client.post(url, json=payload)
@@ -71,7 +74,7 @@ async def redis_listener():
                         'pd_seviyesi_pc': data_dict.get('pd_seviyesi_pc', 0)
                     }])
 
-                    # Sadece 0/1 değil, olasılık yüzdesini alıyoruz (Predictive Probability)
+
                     probabilities = xgb_model.predict_proba(features)[0]
                     risk_score = float(probabilities[1] * 100)
                     prediction = 1 if risk_score > 50 else 0
